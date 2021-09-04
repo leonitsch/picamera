@@ -23,7 +23,7 @@ package main
 #cgo LDFLAGS: -lmbedtls -lmbedcrypto
 */
 import "C"
-//import "unsafe"
+import "unsafe"
 
 import (
 	"archive/tar"
@@ -45,16 +45,27 @@ import (
 	"path/filepath"
 	"github.com/dhowden/raspicam"
 	"time"
+	"strings"
 )
 
 // const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
 
 func main() {
-
 	C.picamera_init()
-	C.picamera_genkey()
 
+	pub_key_size := C.int(89)
+	pub_key_c := C.CString(strings.Repeat("0", 89))
+
+	fehler := C.picamera_genkey(pub_key_c, pub_key_size)
+	if (fehler != 0) {
+		fmt.Println("error generating the keypair ")
+	}
+	defer C.free(unsafe.Pointer(pub_key_c))
+
+	pubkey := C.GoString(pub_key_c)
+
+	fmt.Printf("Public Key: %s \n", pubkey)
 	fmt.Println("Please save the public key and press [enter] to continue...")
 	fmt.Scanln() // wait for Enter Key
 
@@ -80,7 +91,15 @@ func main() {
 		// Sign the generated Hash
 		// signature := ed25519.Sign(priv_key, hash)
 		// fmt.Printf("Signature: %s \n", hex.EncodeToString(signature))
-		signature := C.GoString(C.picamera_get_signature(C.CString(string(hash))))
+		signatureC := C.CString(strings.Repeat("0", 2048))
+		error := C.int(0)
+		error = C.picamera_get_signature(C.CString(string(hash)), signatureC)
+
+		if(error != 0) {
+			fmt.Println("Error in Signature Generation")
+		}
+
+		signature := C.GoString(signatureC)
 		fmt.Println("Sending signature: %s \n", signature)
 
 		fis, err := os.Create("signature")
@@ -90,14 +109,6 @@ func main() {
 		defer fis.Close()
 		fis.Write([]byte(signature))
 
-		// convert the public key
-		// pubkey, err := x509.MarshalPKIXPublicKey(pub_key)
-		// if err != nil {
-		// 	log.Fatal(err)
-		// }
-		// fmt.Printf("Converted public key: %s \n", hex.EncodeToString(pubkey))
-		pubkey := C.GoString(C.picamera_get_publickey())
-		fmt.Println("Sending pubkey: %s \n", pubkey)
 		// Create a File for the public key
 		fi, err := os.Create("key.pub")
 		if err != nil {
@@ -116,7 +127,7 @@ func main() {
 		addFileToTarWriter(FILE_NAME, tarWriter)
 		addFileToTarWriter("key.pub", tarWriter)
 		addFileToTarWriter("signature", tarWriter)
-		postFile("http://192.168.10.199:8080/upload", "archive.tar")
+		postFile("http://192.168.10.194:8080/upload", "archive.tar")
 		d, err := time.ParseDuration("5s")
 		if err != nil {
 			panic(err)

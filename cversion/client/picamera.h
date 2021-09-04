@@ -4,9 +4,8 @@
 
 int picamera_init();
 char* picamera_testpass(char* hash);
-void picamera_genkey();
-char* picamera_get_publickey();
-char* picamera_get_signature(char* hash);
+int picamera_genkey(char* pub_key, int pub_key_length);
+int picamera_get_signature(char* hash, char* signature);
 void picamera_free();
 
 #endif
