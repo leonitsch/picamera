@@ -18,9 +18,10 @@ package main
 #include "mbedtls/base64.h"
 #include "mbedtls/error.h"
 #include "picamera.h"
+#include "wiringPi.h"
 
 #cgo CFLAGS: -g 
-#cgo LDFLAGS: -lmbedtls -lmbedcrypto
+#cgo LDFLAGS: -lmbedtls -lmbedcrypto -lwiringPi
 */
 import "C"
 import "unsafe"
@@ -100,7 +101,7 @@ func main() {
 		}
 
 		signature := C.GoString(signatureC)
-		fmt.Println("Sending signature: %s \n", signature)
+		fmt.Printf("Sending signature: %s", signature)
 
 		fis, err := os.Create("signature")
 		if err != nil {

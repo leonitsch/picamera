@@ -15,6 +15,7 @@
 #include "mbedtls/pk.h"
 #include "mbedtls/base64.h"
 #include "mbedtls/error.h"
+#include "wiringPi.h"
 
 
 mbedtls_ecdsa_context ctx_ecdsa;
@@ -22,6 +23,11 @@ mbedtls_ctr_drbg_context ctx_drgb;
 mbedtls_entropy_context ctx_entropy;
 
 int picamera_init(){
+  wiringPiSetup();
+  pinMode(0, INPUT);
+  // setting up interrupt handler
+  wiringPiISR(0, INT_EDGE_RISING, picamera_free);
+
   char *seed = "picamera";
   mbedtls_ctr_drbg_init(&ctx_drgb);
   mbedtls_entropy_init(&ctx_entropy);
@@ -75,4 +81,5 @@ void picamera_free(){
   mbedtls_ecdsa_free(&ctx_ecdsa);
   mbedtls_ctr_drbg_free(&ctx_drgb);
   mbedtls_entropy_free(&ctx_entropy);
+  exit(0);
 }
