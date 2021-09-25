@@ -16,7 +16,7 @@
 #include "mbedtls/base64.h"
 #include "mbedtls/error.h"
 #include "wiringPi.h"
-
+#include <time.h>
 
 mbedtls_ecdsa_context ctx_ecdsa;
 mbedtls_ctr_drbg_context ctx_drgb;
@@ -78,8 +78,15 @@ int picamera_get_signature(char *hash, char* signature){
 
 
 void picamera_free(){
+  clock_t start, end;
+  double cpu_time_used;
   mbedtls_ecdsa_free(&ctx_ecdsa);
   mbedtls_ctr_drbg_free(&ctx_drgb);
-  mbedtls_entropy_free(&ctx_entropy);
+  mbedtls_entropy_free(&ctx_entropy);   
+  start = clock();
+  end = clock();
+  
+  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  printf("cpu_time needed for context free: %f \n",cpu_time_used);
   exit(0);
 }

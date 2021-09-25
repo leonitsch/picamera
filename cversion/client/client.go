@@ -19,21 +19,16 @@ package main
 #include "mbedtls/error.h"
 #include "picamera.h"
 #include "wiringPi.h"
+#include <time.h>
 
-#cgo CFLAGS: -g 
+#cgo CFLAGS: -g
 #cgo LDFLAGS: -lmbedtls -lmbedcrypto -lwiringPi
 */
 import "C"
-import "unsafe"
-
 import (
 	"archive/tar"
 	"bytes"
-	// "crypto/ed25519"
-	// "crypto/rand"
 	"crypto/sha256"
-	// "crypto/x509"
-	// "encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -44,10 +39,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"github.com/dhowden/raspicam"
-	"time"
 	"strings"
+	"time"
+	"unsafe"
+
+	"github.com/dhowden/raspicam"
 )
+
+// "crypto/ed25519"
+// "crypto/rand"
+
+// "crypto/x509"
+// "encoding/hex"
 
 // const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
@@ -59,7 +62,7 @@ func main() {
 	pub_key_c := C.CString(strings.Repeat("0", 89))
 
 	fehler := C.picamera_genkey(pub_key_c, pub_key_size)
-	if (fehler != 0) {
+	if fehler != 0 {
 		fmt.Println("error generating the keypair ")
 	}
 	defer C.free(unsafe.Pointer(pub_key_c))
@@ -70,12 +73,12 @@ func main() {
 	fmt.Println("Please save the public key and press [enter] to continue...")
 	fmt.Scanln() // wait for Enter Key
 
-	for i:=0;i<10;i++{
-			
+	for i := 0; i < 10; i++ {
+
 		// Take a picture
 		// createPicture(FILE_NAME)
 		createVideo("video.264")
-		convertVideo("video.264",FILE_NAME)
+		convertVideo("video.264", FILE_NAME)
 		// createPicture("pic.png")
 		f, err := os.Open(FILE_NAME)
 		if err != nil {
@@ -96,7 +99,7 @@ func main() {
 		error := C.int(0)
 		error = C.picamera_get_signature(C.CString(string(hash)), signatureC)
 
-		if(error != 0) {
+		if error != 0 {
 			fmt.Println("Error in Signature Generation")
 		}
 
@@ -176,15 +179,13 @@ func createVideo(filename string) {
 	raspicam.Capture(s, f, errCh)
 }
 
-func convertVideo(input string, output string){
-	cmd := exec.Command("ffmpeg","-y","-framerate", "30", "-i", input, "-c", "copy" , output)
+func convertVideo(input string, output string) {
+	cmd := exec.Command("ffmpeg", "-y", "-framerate", "30", "-i", input, "-c", "copy", output)
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
-
-
 
 // Posts a file to the Server
 func postFile(url string, file_path string) {
