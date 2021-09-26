@@ -40,8 +40,8 @@ func main() {
 	fs := http.FileServer(http.Dir("./data"))
 	http.Handle("/files/", http.StripPrefix("/files", fs))
 	// Logging
-	log.Print("Server startet on localhost:8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Print("Server startet on localhost:8443")
+	log.Fatal(http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", nil))
 }
 
 /*

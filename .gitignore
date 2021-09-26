@@ -1,0 +1,3 @@
+cversion/server/data/*
+cversion/server/tmp/*
+cversion/server/*.pem

@@ -131,7 +131,7 @@ func main() {
 		addFileToTarWriter(FILE_NAME, tarWriter)
 		addFileToTarWriter("key.pub", tarWriter)
 		addFileToTarWriter("signature", tarWriter)
-		postFile("http://192.168.10.194:8080/upload", "archive.tar")
+		postFile("https://Leons-MacBook-Air-2:8443/upload", "archive.tar")
 		d, err := time.ParseDuration("5s")
 		if err != nil {
 			panic(err)
