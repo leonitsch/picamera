@@ -3,13 +3,12 @@ package main
 import (
 	"archive/tar"
 	"crypto/ecdsa"
-	"crypto/ed25519"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"crypto/x509"
 	"encoding/base64"
 	"encoding/hex"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,23 +24,47 @@ import (
 )
 
 // Upload Parameters
-const maximumUploadSize = 20 * 1024 * 1024 // 10 MB
 const uploadPath = "./tmp"
 
 // const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
 
+var maxUploadSize int
+var dataPath string
+var certPath string
+var keyPath string
+var url string
+var cameraPublicKey string
+var customPublicKey bool
+
 func main() {
 	setup_close_handler()
+
+	flag.StringVar(&url, "url", ":8443", "specify the URL to listen on. Either use localhost:8443 or :8443")
+	flag.StringVar(&dataPath, "data_path", "./data", "specify the path where the received files get stored")
+	flag.StringVar(&certPath, "cert_path", "./cert.pem", "specifiy path of certificate including the certificate filename, example: /etc/picamera/cert.pem")
+	flag.StringVar(&keyPath, "key_path", "./key.pem", "specify path of key including the key file name, example: /etc/picamera/key.pem")
+	flag.StringVar(&cameraPublicKey, "camera_pk", "./data/key.pub", "specify path of the public key")
+
+	flag.IntVar(&maxUploadSize, "upload_size", 20*1024*1024, "set allowed upload size, default is 20 MB")
+	flag.Parse()
+
+	if cameraPublicKey == "./data/key.pub" {
+		cameraPublicKey = dataPath + "/key.pub"
+		customPublicKey = false
+	} else {
+		customPublicKey = true
+	}
+
 	// Handler setup for the index Page
 	http.HandleFunc("/upload", uploadFileHandler())
 	http.HandleFunc("/", helloHandler())
 	// Handler setup for the File Server page
-	fs := http.FileServer(http.Dir("./data"))
+	fs := http.FileServer(http.Dir(dataPath))
 	http.Handle("/files/", http.StripPrefix("/files", fs))
 	// Logging
-	log.Print("Server startet on localhost:8443")
-	log.Fatal(http.ListenAndServeTLS(":8443", "cert.pem", "key.pem", nil))
+	log.Print("Server startet on " + url)
+	log.Fatal(http.ListenAndServeTLS(url, certPath, keyPath, nil))
 }
 
 /*
@@ -54,7 +77,7 @@ func unpack_material() error {
 	}
 	for _, archive := range archives {
 		timestamp := strconv.FormatInt(time.Now().Unix(), 10)
-		dirpath := "./data/" + timestamp
+		dirpath := dataPath + "/" + timestamp
 		err := os.Mkdir(dirpath, 0755)
 		if err != nil {
 			log.Fatal(err)
@@ -76,13 +99,13 @@ Return the a http.HandlerFunc
 func helloHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("<h1><center>Willkommen zum Raspberry PI Upload Server</center></h1><br>"))
-		data_dirs, err := ioutil.ReadDir("./data")
+		data_dirs, err := ioutil.ReadDir(dataPath)
 		if err != nil {
 			log.Fatal(err)
 		}
 
 		for _, data := range data_dirs {
-			val, err := check_signature("./data/" + data.Name())
+			val, err := check_signature(dataPath + "/" + data.Name())
 			check(err)
 			w.Write([]byte("<center>" + data.Name() + "  " + strconv.FormatBool(val) + "</center>"))
 		}
@@ -96,7 +119,7 @@ Create the HandlerFunc for the Fileupload
 func uploadFileHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Parse the multipart form
-		if err := r.ParseMultipartForm(maximumUploadSize); err != nil {
+		if err := r.ParseMultipartForm(int64(maxUploadSize)); err != nil {
 			fmt.Printf("Could not parse multipart form: %v \n", err)
 			renderError(w, "CANT_PARSE_FORM", http.StatusInternalServerError)
 			return
@@ -111,7 +134,7 @@ func uploadFileHandler() http.HandlerFunc {
 		// Validate Upload Size
 		fileSize := fileheader.Size
 		fmt.Printf("File size (bytes): %v \n", fileSize)
-		if fileSize > maximumUploadSize {
+		if fileSize > int64(maxUploadSize) {
 			renderError(w, "FILE_TO_BIG", http.StatusBadRequest)
 			return
 		}
@@ -165,32 +188,6 @@ func uploadFileHandler() http.HandlerFunc {
 	})
 }
 
-// func check_signature(data_path string) (bool, error) {
-// 	signature, err := ioutil.ReadFile(data_path + "/signature")
-// 	check(err)
-// 	pk, err := ioutil.ReadFile(data_path + "/key.pub")
-// 	check(err)
-// 	pub_key, err := x509.ParsePKIXPublicKey(pk)
-// 	check(err)
-// 	f, err := os.Open(data_path + "/" + FILE_NAME)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	defer f.Close()
-
-// 	h := sha256.New()
-// 	if _, err := io.Copy(h, f); err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	hash := h.Sum(nil)
-// 	fmt.Printf("pub_key: %s,hash: %s, signature: %s", hex.EncodeToString(pk), hex.EncodeToString(hash), hex.EncodeToString(signature))
-// 	if ed25519.Verify(pub_key.(ed25519.PublicKey), hash, signature) {
-// 		fmt.Println("Signature okay")
-// 		return true, nil
-// 	}
-// 	return false, nil
-// }
-
 func check_signature(data_path string) (bool, error) {
 	signature, err := ioutil.ReadFile(data_path + "/signature")
 	if err != nil {
@@ -199,8 +196,13 @@ func check_signature(data_path string) (bool, error) {
 	}
 	signature, err = base64.StdEncoding.DecodeString(string(signature))
 	check(err)
-	pk, err := ioutil.ReadFile(data_path + "/key.pub")
-	check(err)
+	var pk []byte
+	if customPublicKey {
+		pk = []byte(cameraPublicKey)
+	} else {
+		pk, err = ioutil.ReadFile(data_path + "/key.pub")
+		check(err)
+	}
 	curve := elliptic.P256()
 	pubKey := ecdsa.PublicKey{
 		Curve: curve,
@@ -240,41 +242,6 @@ func check_signature(data_path string) (bool, error) {
 		return true, nil
 	}
 	return false, nil
-}
-
-func check_all_signatures() {
-	data_path := "./data/"
-	data_dirs, err := ioutil.ReadDir(data_path)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for _, data := range data_dirs {
-		fmt.Println(data.Name())
-		signature, err := ioutil.ReadFile(data_path + data.Name() + "/signature")
-		check(err)
-		pk, err := ioutil.ReadFile(data_path + data.Name() + "/key.pub")
-		check(err)
-		pub_key, err := x509.ParsePKIXPublicKey(pk)
-		check(err)
-		f, err := os.Open(data_path + data.Name() + "/" + FILE_NAME)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-
-		h := sha256.New()
-		if _, err := io.Copy(h, f); err != nil {
-			log.Fatal(err)
-		}
-		hash := h.Sum(nil)
-		fmt.Printf("pub_key: %s,hash: %s, signature: %s", hex.EncodeToString(pk), hex.EncodeToString(hash), hex.EncodeToString(signature))
-		if ed25519.Verify(pub_key.(ed25519.PublicKey), hash, signature) {
-			fmt.Println("Signature okay")
-		} else {
-			fmt.Println("WRONG")
-		}
-	}
 }
 
 func untar_archive(archivepath string, destpath string) error {
@@ -324,7 +291,7 @@ func setup_close_handler() {
 func cleanup() {
 	err := RemoveContents("./tmp")
 	check(err)
-	err = RemoveContents("./data")
+	err = RemoveContents(dataPath)
 	check(err)
 }
 
