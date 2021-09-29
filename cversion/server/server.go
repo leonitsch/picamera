@@ -23,10 +23,7 @@ import (
 	"time"
 )
 
-// Upload Parameters
 const uploadPath = "./tmp"
-
-// const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
 
 var maxUploadSize int
@@ -63,15 +60,15 @@ func main() {
 	fs := http.FileServer(http.Dir(dataPath))
 	http.Handle("/files/", http.StripPrefix("/files", fs))
 	// Logging
-	log.Print("Server startet on " + url)
+	log.Print("Server running on " + url)
 	log.Fatal(http.ListenAndServeTLS(url, certPath, keyPath, nil))
 }
 
 /*
-Function
+Extracts all TAR Archives in the /tmp directory
 */
 func unpack_material() error {
-	archives, err := ioutil.ReadDir("./tmp")
+	archives, err := ioutil.ReadDir(uploadPath)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -82,10 +79,10 @@ func unpack_material() error {
 		if err != nil {
 			log.Fatal(err)
 		}
-		err = untar_archive("./tmp/"+archive.Name(), dirpath)
+		err = untar_archive(uploadPath+"/"+archive.Name(), dirpath)
 		check(err)
 		fmt.Println("REmove: " + archive.Name())
-		err = os.Remove("./tmp/" + archive.Name())
+		err = os.Remove(uploadPath + "/" + archive.Name())
 		check(err)
 	}
 	return nil
@@ -109,7 +106,6 @@ func helloHandler() http.HandlerFunc {
 			check(err)
 			w.Write([]byte("<center>" + data.Name() + "  " + strconv.FormatBool(val) + "</center>"))
 		}
-		// check_all_signatures()
 	})
 }
 
