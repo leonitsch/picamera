@@ -37,7 +37,8 @@ then
     #3
     echo "successfully installed all requirements..."
     echo "Starting client..."
-    go run ./client/ "${@:2}"
+    cd ./client/
+    go run . "${@:2}"
   fi
   if [ $1 = "server" ]
   then
