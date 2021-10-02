@@ -23,14 +23,14 @@ then
     tar -xfz go1.16.6.linux-armv6l.tar.gz -C /usr/local/
     # create symlink for go binary
     ln -s /usr/local/go/bin/go /bin/go
-    # 
+    #
     echo "successfully installed all requirements..."
     echo "Starting client..."
-    go run ./client/
+    go run ./client/ "${@:2}"
   fi
   if [ $1 = "server" ]
   then
     echo "Starting server..."
-    go run ./server/server.go
+    go run ./server/server.go "${@:2}"
   fi
 fi
