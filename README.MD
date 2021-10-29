@@ -6,6 +6,6 @@ This repository contains two reference implementations, one written in pure GO a
 
 
 ## Installation
-For installation run : `./install.sh server` or `./install.sh client`
+For installation run : `sudo /bin/bash ./install.sh server` or `sudo /bin/bash ./install.sh client`
 
 To start the server: `cd server/` and run `go run .`
