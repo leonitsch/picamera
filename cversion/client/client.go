@@ -67,16 +67,15 @@ func main() {
 
 
                                                                                     `
-	fmt.Printf("%s \n",asciiArt)
-
+	fmt.Printf("%s \n", asciiArt)
 
 	C.picamera_init()
 
 	pub_key_size := C.int(89)
 	pub_key_c := C.CString(strings.Repeat("0", 89))
 
-	fehler := C.picamera_genkey(pub_key_c, pub_key_size)
-	if fehler != 0 {
+	error := C.picamera_genkey(pub_key_c, pub_key_size)
+	if error != 0 {
 		fmt.Println("error generating the keypair ")
 	}
 	defer C.free(unsafe.Pointer(pub_key_c))
@@ -85,30 +84,23 @@ func main() {
 
 	fmt.Printf("Public Key: %s \n", pubkey)
 	fmt.Println("Please save the public key and press [enter] to continue...")
-	fmt.Scanln() // wait for Enter Key
+	fmt.Scanln()
 
 	for i := 0; i < 10; i++ {
-
-		// Take a picture
-		// createPicture(FILE_NAME)
 		createVideo("video.264")
 		convertVideo("video.264", FILE_NAME)
-		// createPicture("pic.png")
 		f, err := os.Open(FILE_NAME)
 		if err != nil {
 			log.Fatal(err)
 		}
 		defer f.Close()
 
-		// Create the Hash
 		h := sha256.New()
 		if _, err := io.Copy(h, f); err != nil {
 			log.Fatal(err)
 		}
 		hash := h.Sum(nil)
-		// Sign the generated Hash
-		// signature := ed25519.Sign(priv_key, hash)
-		// fmt.Printf("Signature: %s \n", hex.EncodeToString(signature))
+
 		signatureC := C.CString(strings.Repeat("0", 2048))
 		error := C.int(0)
 		error = C.picamera_get_signature(C.CString(string(hash)), signatureC)
@@ -154,11 +146,10 @@ func main() {
 	}
 }
 
-func createPicture(filename string) {
+func createPicture(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "create file: %v", err)
-		return
+		return errors.New(fmt.Sprintf("Could not create picture %s, got error %s", filename, err.Error()))
 	}
 	defer f.Close()
 
@@ -174,11 +165,11 @@ func createPicture(filename string) {
 }
 
 // Creates a video of 5 seconds (standard)
-func createVideo(filename string) {
+func createVideo(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "create file: %v", err)
-		return
+		return err
 	}
 	defer f.Close()
 
@@ -191,14 +182,16 @@ func createVideo(filename string) {
 	}()
 	log.Println("Capturing video...")
 	raspicam.Capture(s, f, errCh)
+	return err
 }
 
-func convertVideo(input string, output string) {
+func convertVideo(input string, output string) error {
 	cmd := exec.Command("ffmpeg", "-y", "-framerate", "30", "-i", input, "-c", "copy", output)
 	err := cmd.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
+	return err
 }
 
 // Posts a file to the Server
@@ -239,7 +232,7 @@ func postFile(url string, file_path string) {
 	fmt.Println(string(body))
 }
 
-// TAR HELPER FUNCTION
+// tar helper function from https://gist.github.com/maximilien/328c9ac19ab0a158a8df
 func addFileToTarWriter(filePath string, tarWriter *tar.Writer) error {
 	file, err := os.Open(filePath)
 	if err != nil {

@@ -140,7 +140,7 @@ func uploadFileHandler() http.HandlerFunc {
 			renderError(w, "INVALID_FILE", http.StatusBadRequest)
 			return
 		}
-		// detec file type
+		// detect file type
 		detectedFileType := http.DetectContentType(fileBytes)
 		switch detectedFileType {
 		case "image/jpeg", "image/jpg":

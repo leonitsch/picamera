@@ -25,9 +25,13 @@ mbedtls_entropy_context ctx_entropy;
 int picamera_init(){
   wiringPiSetup();
   pinMode(0, INPUT);
-  // setting up interrupt handler
+
+  // Setting up the interrupt handler
   wiringPiISR(0, INT_EDGE_RISING, picamera_free);
 
+  // Personal seed for the random number generator
+  // Note: this personalization string is not a critical security parameter, entropy will be provided trough a entropy collector
+  //       see https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-90Ar1.pdf , Section 8.7.1 for more infos on the personalization string
   char *seed = "picamera";
   mbedtls_ctr_drbg_init(&ctx_drgb);
   mbedtls_entropy_init(&ctx_entropy);
@@ -39,6 +43,8 @@ int picamera_init(){
   return err;
 }
 
+
+// Function that generates a new ECDSA keypair
 int picamera_genkey(char* pub_key, int pub_key_length){
   int err = 0; 
   if ( (err = mbedtls_ecdsa_genkey(&ctx_ecdsa, MBEDTLS_ECP_DP_SECP256R1, mbedtls_ctr_drbg_random, &ctx_drgb)) != 0){
@@ -60,11 +66,11 @@ int picamera_genkey(char* pub_key, int pub_key_length){
   return 0;
 }
 
+// Function that returns a signature for a passed hash
 int picamera_get_signature(char *hash, char* signature){
   unsigned char sig[MBEDTLS_ECDSA_MAX_LEN];
   unsigned char *hash_unsigned = (unsigned char*) hash;
   size_t slen;
-  // TODO strlen(hash_unsigned) wirklich korrekt?
   int err  = 0;
   if ( (err = mbedtls_ecdsa_write_signature(&ctx_ecdsa,MBEDTLS_MD_SHA256, hash_unsigned, strlen(hash_unsigned), sig, sizeof(sig), &slen, mbedtls_ctr_drbg_random, &ctx_drgb)) != 0 ){
     return err;
@@ -78,15 +84,16 @@ int picamera_get_signature(char *hash, char* signature){
 
 
 void picamera_free(){
-  clock_t start, end;
-  double cpu_time_used;
+  // Code for measurements of the context free method is in comments: 
+
+  // clock_t start, end;
+  // double cpu_time_used;
+  // start = clock();
   mbedtls_ecdsa_free(&ctx_ecdsa);
   mbedtls_ctr_drbg_free(&ctx_drgb);
   mbedtls_entropy_free(&ctx_entropy);   
-  start = clock();
-  end = clock();
-  
-  cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-  printf("cpu_time needed for context free: %f \n",cpu_time_used);
+  // end = clock();
+  // cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+  // printf("cpu_time needed for context free: %f \n",cpu_time_used);
   exit(0);
 }
