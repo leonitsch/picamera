@@ -47,6 +47,7 @@ import (
 
 const FILE_NAME = "video.mp4"
 const SERVER_URL = "https://192.168.10.184:8443/upload"
+const VIDEO_LENGTH = 600 // Video length in seconds
 
 func main() {
 
@@ -81,57 +82,62 @@ func main() {
 
 	for {
 		createVideo("video.264")
-		convertVideo("video.264", FILE_NAME)
-		f, err := os.Open(FILE_NAME)
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-
-		h := sha256.New()
-		if _, err := io.Copy(h, f); err != nil {
-			log.Fatal(err)
-		}
-		hash := h.Sum(nil)
-
-		signatureC := C.CString(strings.Repeat("0", 2048))
-		error := C.int(0)
-		error = C.picamera_get_signature(C.CString(string(hash)), signatureC)
-
-		if error != 0 {
-			fmt.Println("Error in Signature Generation")
-		}
-
-		signature := C.GoString(signatureC)
-		fmt.Printf("Sending signature: %s", signature)
-
-		fis, err := os.Create("signature")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fis.Close()
-		fis.Write([]byte(signature))
-
-		// Create a File for the public key
-		fi, err := os.Create("key.pub")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer fi.Close()
-		fi.Write([]byte(pubkey))
-
-		// Create an Tar Archive
-		tarfile, err := os.Create("archive.tar")
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer tarfile.Close()
-		tarWriter := tar.NewWriter(tarfile)
-		addFileToTarWriter(FILE_NAME, tarWriter)
-		addFileToTarWriter("key.pub", tarWriter)
-		addFileToTarWriter("signature", tarWriter)
-		postFile(SERVER_URL, "archive.tar")
+		go signAndSend(pubkey)
 	}
+}
+
+func signAndSend(pubkey string) error {
+	convertVideo("video.264", FILE_NAME)
+	f, err := os.Open(FILE_NAME)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	h := sha256.New()
+	if _, err := io.Copy(h, f); err != nil {
+		log.Fatal(err)
+	}
+	hash := h.Sum(nil)
+
+	signatureC := C.CString(strings.Repeat("0", 2048))
+	error := C.int(0)
+	error = C.picamera_get_signature(C.CString(string(hash)), signatureC)
+
+	if error != 0 {
+		fmt.Println("Error in Signature Generation")
+	}
+
+	signature := C.GoString(signatureC)
+	fmt.Printf("Sending signature: %s", signature)
+
+	fis, err := os.Create("signature")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fis.Close()
+	fis.Write([]byte(signature))
+
+	// Create a File for the public key
+	fi, err := os.Create("key.pub")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer fi.Close()
+	fi.Write([]byte(pubkey))
+
+	// Create an Tar Archive
+	tarfile, err := os.Create("archive.tar")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer tarfile.Close()
+	tarWriter := tar.NewWriter(tarfile)
+	addFileToTarWriter(FILE_NAME, tarWriter)
+	addFileToTarWriter("key.pub", tarWriter)
+	addFileToTarWriter("signature", tarWriter)
+	postFile(SERVER_URL, "archive.tar")
+	return nil
 }
 
 func createPicture(filename string) error {

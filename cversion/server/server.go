@@ -43,7 +43,7 @@ func main() {
 	flag.StringVar(&keyPath, "key_path", "./key.pem", "specify path of key including the key file name, example: /etc/picamera/key.pem")
 	flag.StringVar(&cameraPublicKey, "camera_pk", "./data/key.pub", "specify path of the public key")
 
-	flag.IntVar(&maxUploadSize, "upload_size", 20*1024*1024, "set allowed upload size, default is 20 MB")
+	flag.IntVar(&maxUploadSize, "upload_size", 200*1024*1024, "set allowed upload size, default is 200 MB")
 	flag.Parse()
 
 	if cameraPublicKey == "./data/key.pub" {
