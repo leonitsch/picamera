@@ -81,7 +81,7 @@ func unpack_material() error {
 		}
 		err = untar_archive(uploadPath+"/"+archive.Name(), dirpath)
 		check(err)
-		fmt.Println("REmove: " + archive.Name())
+		fmt.Println("Removing " + archive.Name())
 		err = os.Remove(uploadPath + "/" + archive.Name())
 		check(err)
 	}
@@ -95,7 +95,7 @@ Return the a http.HandlerFunc
 */
 func helloHandler() http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("<h1><center>Willkommen zum Raspberry PI Upload Server</center></h1><br>"))
+		w.Write([]byte("<h1><center>Welcome to the picamera Upload Server</center></h1><br>"))
 		data_dirs, err := ioutil.ReadDir(dataPath)
 		if err != nil {
 			log.Fatal(err)
@@ -211,12 +211,8 @@ func check_signature(data_path string) (bool, error) {
 		fmt.Println("error:", err)
 		return false, err
 	}
-	fmt.Printf("GO received public key:   %s\n", hex.EncodeToString(pubkey_point))
-
 	xBytes := pubkey_point[1:33]
-	fmt.Printf("GO received public key X: %s\n", hex.EncodeToString(xBytes))
 	yBytes := pubkey_point[33:]
-	fmt.Printf("GO received public key Y: %s\n", hex.EncodeToString(yBytes))
 	pubKey.X = new(big.Int).SetBytes(xBytes)
 	pubKey.Y = new(big.Int).SetBytes(yBytes)
 
@@ -231,7 +227,7 @@ func check_signature(data_path string) (bool, error) {
 		log.Fatal(err)
 	}
 	hash := h.Sum(nil)
-	fmt.Printf("pub_key: %s,hash: %s, signature: %s", hex.EncodeToString(pubkey_point), hex.EncodeToString(hash), hex.EncodeToString(signature))
+	fmt.Printf("pub_key: %s,hash: %s, signature: %s \n", hex.EncodeToString(pubkey_point), hex.EncodeToString(hash), hex.EncodeToString(signature))
 
 	if ecdsa.VerifyASN1(&pubKey, hash, signature) {
 		fmt.Println("Signature okay")
@@ -262,7 +258,7 @@ func untar_archive(archivepath string, destpath string) error {
 		}
 		target := filepath.Join(destpath + "/" + header.Name)
 		f, err := os.OpenFile(target, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-		fmt.Printf("TargetFile: %s \n", target)
+		fmt.Printf("File: %s \n", target)
 		defer f.Close()
 		if err != nil {
 			return err
