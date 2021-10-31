@@ -162,6 +162,7 @@ func createPicture(filename string) error {
 	}()
 	log.Println("Capturing image...")
 	raspicam.Capture(s, f, errCh)
+	return nil
 }
 
 // Creates a video of 5 seconds (standard)
