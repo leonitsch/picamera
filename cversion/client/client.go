@@ -54,6 +54,7 @@ import (
 
 // const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
+const SERVER_URL = "https://192.168.10.184:8443/upload"
 
 func main() {
 
@@ -137,7 +138,7 @@ func main() {
 		addFileToTarWriter(FILE_NAME, tarWriter)
 		addFileToTarWriter("key.pub", tarWriter)
 		addFileToTarWriter("signature", tarWriter)
-		postFile("https://Leons-MacBook-Air-2:8443/upload", "archive.tar")
+		postFile(SERVER_URL, "archive.tar")
 		d, err := time.ParseDuration("5s")
 		if err != nil {
 			panic(err)
