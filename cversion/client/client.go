@@ -40,6 +40,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 	"unsafe"
 
 	"github.com/dhowden/raspicam"
@@ -82,12 +83,12 @@ func main() {
 
 	for {
 		createVideo("video.264")
+		convertVideo("video.264", FILE_NAME)
 		go signAndSend(pubkey)
 	}
 }
 
 func signAndSend(pubkey string) error {
-	convertVideo("video.264", FILE_NAME)
 	f, err := os.Open(FILE_NAME)
 	if err != nil {
 		log.Fatal(err)
@@ -169,6 +170,7 @@ func createVideo(filename string) error {
 	defer f.Close()
 
 	s := raspicam.NewVid()
+	s.Timeout = VIDEO_LENGTH * time.Second
 	errCh := make(chan error)
 	go func() {
 		for x := range errCh {
