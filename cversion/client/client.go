@@ -40,19 +40,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/dhowden/raspicam"
 )
 
-// "crypto/ed25519"
-// "crypto/rand"
-
-// "crypto/x509"
-// "encoding/hex"
-
-// const FILE_NAME = "test.jpg"
 const FILE_NAME = "video.mp4"
 const SERVER_URL = "https://192.168.10.184:8443/upload"
 
@@ -87,7 +79,7 @@ func main() {
 	fmt.Println("Please save the public key and press [enter] to continue...")
 	fmt.Scanln()
 
-	for i := 0; i < 10; i++ {
+	for {
 		createVideo("video.264")
 		convertVideo("video.264", FILE_NAME)
 		f, err := os.Open(FILE_NAME)
@@ -139,11 +131,6 @@ func main() {
 		addFileToTarWriter("key.pub", tarWriter)
 		addFileToTarWriter("signature", tarWriter)
 		postFile(SERVER_URL, "archive.tar")
-		d, err := time.ParseDuration("5s")
-		if err != nil {
-			panic(err)
-		}
-		time.Sleep(d)
 	}
 }
 
